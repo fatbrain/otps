@@ -1,0 +1,47 @@
+{
+  "name": "otps",
+  "version": "0.1.0",
+  "packageManager": "yarn@3.1.1",
+  "type": "commonjs",
+  "license": "MIT",
+  "main": "index",
+  "types": "index.d.ts",
+  "description": "parse command-line arguments",
+  "author": {
+    "name": "Jonas Jonsson",
+    "email": "fatbrain@gmail.com"
+  },
+  "homepage": "https://github.com/fatbrain/otps",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fatbrain/otps.git"
+  },
+  "keywords": [
+    "argv",
+    "cli"
+  ],
+  "bugs": {
+    "url": "https://github.com/fatbrain/otps/issues"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "engines": {
+    "node": ">=7"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.16.0",
+    "@babel/preset-env": "^7.16.4",
+    "@babel/preset-typescript": "^7.16.0",
+    "@types/jest": "^27.0.3",
+    "babel-jest": "^27.4.4",
+    "jest": "^27.4.4",
+    "typescript": "^4.5.3"
+  }
+}

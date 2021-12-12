@@ -1,0 +1,10 @@
+{
+    "semi": false,
+    "arrowParens": "avoid",
+    "endOfLine": "lf",
+    "jsxSingleQuote": true,
+    "parser": "typescript",
+    "singleQuote": true,
+    "trailingComma": "all",
+    "printWidth": 80
+}
