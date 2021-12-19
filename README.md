@@ -35,9 +35,10 @@ First, create a `app.js` file:
 
 ```js
 import { parse, Value } from 'otps'
-const [params, argv] = parse(process.argv.slice(2), [
-  [['format', 'f'], Value()],
-])
+const [params, argv] = parse(process.argv.slice(2), {
+  format: Value(),
+  f: 'format',
+})
 ```
 
 Then run the program:
@@ -66,13 +67,12 @@ Create a `subcmdapp.js` file:
 
 ```js
 import { parse, Flag, OneOf } from 'otps'
-const [params, argv] = parse(process.argv.slice(2), function* () {
-  const cmd = yield [[['verbose', 'v'], Flag()]]
-  if (cmd === 'build') {
-    yield [['level', OneOf('debug', 'info')]]
-  } else {
-    throw new Error(`unknown sub-command: ${cmd}`)
-  }
+const [params, argv] = parse(process.argv.slice(2), {
+  verbose: Flag(),
+  v: 'verbose',
+  build: {
+    level: OneOf('debug', 'info'),
+  },
 })
 ```
 
@@ -86,58 +86,69 @@ node subcmdapp.js -vvv build --level info index.ts
 
 ## Parameters
 
-Parameters are defined using the following syntax: `['name', Func]` or with aliases `[['name', 'n', ...], Func]`. Where `Func` is one of:
+Parameters are defined using the following syntax: `{ name: Func }` or with aliases `{ name: Func, n: 'name' }`. Where `Func` is one of:
 
 `Value()`:
 
 ```js
-parse(['--format', 'esm'], [['format', Value()]])
+parse(['--format', 'esm'], { format: Value() })
 // => { format: 'esm' }
 ```
 
 `OneOf(string | regex, ...)`:
 
 ```js
-parse(['--level', 'dEbUg'], [['level', OneOf(/^debug$/i, 'info')]])
+parse(['--level', 'dEbUg'], { level: OneOf(/^debug$/i, 'info') })
 // => { level: 'dEbUg' }
 ```
 
 `Flag()`:
 
 ```js
-parse(['-v'], [['v', Flag()]])
+parse(['-v'], { v: Flag() })
 // => { v: true }
-parse(['-vvv'], [['v', Flag()]])
+parse(['-vvv'], { v: Flag() })
 // => { v: 3 }
-parse(['-vP'], [['v', Flag()], ['P', Flag()]])
+parse(['-vP'], { v: Flag(), P: Flag() })
 // => { v: true, P: true }
-```
-
-`KeyValue()`:
-
-```js
-parse(['--define:DEBUG', 'true'], [['define', KeyValue()]])
-// => { define: { DEBUG: 'true' } }
 ```
 
 `Key()`:
 
 ```js
-parse(['--external:fs'], [['external', Key()]])
+parse(['--external:fs'], { external: Key() })
 // => { external: { fs: true } }
-parse(['--external:fs', '-e:fs'], [[['external', 'e'], Key()]])
+parse(['--external:fs', '-e:fs'], { external: Key(), e: 'external' })
 // => { external: { fs: 2 } }
+```
+
+`Key(Value() | OneOf(...))`:
+
+```js
+parse(['--define:DEBUG', 'true'], { define: Key(Value()) })
+// => { define: { DEBUG: 'true' } }
+parse(['--define:LEVEL', 'debug'], { define: Key(OneOf('debug', 'info')) })
+// => { define: { LEVEL: 'debug' } }
 ```
 
 `Maybe(Value() | OneOf(...))`:
 
 ```js
-parse(['--format'], [['format', Maybe(Value())]])
+parse(['--format'], { format: Maybe(Value()) })
 // => { format: true }
-parse(['--format', 'esm'], [['format', Maybe(Value())]])
+parse(['--format', 'esm'], { format: Maybe(Value()) })
 // => { format: 'esm' }
-parse(['--level'], [['level', Maybe(OneOf('debug', 'info'))]])
+parse(['--level'], { level: Maybe(OneOf('debug', 'info')) })
 // => { level: true }
-parse(['--level', 'info'], [['level', Maybe(OneOf('debug', 'info'))]])
+parse(['--level', 'info'], { level: Maybe(OneOf('debug', 'info')) })
 // => { level: 'info' }
+```
+
+`Many(Value() | OneOf(...) | Maybe(...))`:
+
+```js
+parse(['--format', 'esm', '--format', 'cjs'], { format: Many(Value()) })
+// => { format: ['esm', 'cjs'] }
+parse(['--format', '--format', 'cjs'], { format: Many(Maybe(OneOf('esm', 'cjs'))) })
+// => { format: [true, 'cjs'] }
 ```
