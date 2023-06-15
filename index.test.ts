@@ -1,4 +1,4 @@
-import { parse, Value, Flag, Key, OneOf, Many, Maybe } from './index'
+import { Flag, Key, Many, Maybe, OneOf, Value, cmds, parse } from './index'
 
 const format = { format: Value(), f: 'format' }
 const manyFormat = { format: Many(Value()), f: 'format' }
@@ -27,7 +27,7 @@ test('README.md: app.js: -f esm index.ts', () => {
   expect(argv).toEqual(['index.ts'])
 })
 
-test('README.md: sub-command: -vvv build --level info index.ts', () => {
+test('README.md: subcmdapp.js: -vvv build --level info index.ts', () => {
   const [params, argv] = parse(
     ['-vvv', 'build', '--level', 'info', 'index.ts'],
     {
@@ -40,6 +40,87 @@ test('README.md: sub-command: -vvv build --level info index.ts', () => {
   )
   expect(params).toEqual({ verbose: 3, build: { level: 'info' } })
   expect(argv).toEqual(['index.ts'])
+})
+
+test('README.md: cmdsapp.js: build --format esm production --version 1.0 src/index.ts', () => {
+  const [params, args] = parse(
+    [
+      'build',
+      '--format',
+      'esm',
+      'production',
+      '--version',
+      '1.0',
+      'src/index.ts',
+    ],
+    {
+      build: {
+        format: Value(),
+        production: {
+          version: Value(),
+        },
+      },
+    },
+  )
+
+  cmds(
+    params,
+    args,
+  )({
+    build(params, args) {
+      expect(params.format).toBe('esm')
+      cmds(
+        params,
+        args,
+      )({
+        production(params, args) {
+          expect(params.version).toBe('1.0')
+          expect(args).toEqual(['src/index.ts'])
+        },
+      })
+    },
+  })
+
+  expect.assertions(3)
+})
+
+test('README.md: cmdsapp.js: build --format esm src/index.ts', () => {
+  const [params, args] = parse(
+    [
+      'build',
+      '--format',
+      'esm',
+      'src/index.ts',
+    ],
+    {
+      build: {
+        format: Value(),
+        production: {
+          version: Value(),
+        },
+      },
+    },
+  )
+
+  cmds(
+    params,
+    args,
+  )({
+    build(params, args) {
+      expect(params.format).toBe('esm')
+      cmds(
+        params,
+        args,
+      )({
+        production(params, args) {
+        },
+      }, (params, args) => {
+        expect(args).toEqual(['src/index.ts'])
+      })
+    },
+  })
+
+  expect.assertions(2)
 })
 
 test('README.md: Value()', () => {

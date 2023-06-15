@@ -13,10 +13,10 @@ Supports sub-commands, see below.
 
 # Getting started
 
-Install `otps` using [yarn]:
+Install `otps` using [pnpm]:
 
 ```sh
-yarn add otps
+pnpm add otps
 ```
 
 Or [npm]:
@@ -25,8 +25,8 @@ Or [npm]:
 npm install --save otps
 ```
 
-[yarn]: https://yarn.pm/otps
-[npm]: https://www.npmjs.com/package/otps
+[pnpm]: https://pnpm.io/
+[npm]: https://www.npmjs.com/
 
 Let's get started by writing a simple command line application that takes one
 parameter named `format` (or `f` for short).
@@ -35,7 +35,7 @@ First, create a `app.js` file:
 
 ```js
 import { parse, Value } from 'otps'
-const [params, argv] = parse(process.argv.slice(2), {
+const [params, args] = parse(process.argv.slice(2), {
   format: Value(),
   f: 'format',
 })
@@ -46,7 +46,7 @@ Then run the program:
 ```sh
 node app.js --format esm index.ts
 # => params: { format: 'esm' }
-#    argv: ['index.ts']
+#    args: ['index.ts']
 ```
 
 Or equivalent:
@@ -54,7 +54,7 @@ Or equivalent:
 ```sh
 node app.js -f esm index.ts
 # => params: { format: 'esm' }
-#    argv: ['index.ts']
+#    args: ['index.ts']
 ```
 
 ## Sub commands
@@ -67,7 +67,7 @@ Create a `subcmdapp.js` file:
 
 ```js
 import { parse, Flag, OneOf } from 'otps'
-const [params, argv] = parse(process.argv.slice(2), {
+const [params, args] = parse(process.argv.slice(2), {
   verbose: Flag(),
   v: 'verbose',
   build: {
@@ -81,8 +81,56 @@ Then run the program:
 ```sh
 node subcmdapp.js -vvv build --level info index.ts
 # => params: { verbose: 3, build: { level: 'info' } }
-#    argv: ['index.ts']
+#    args: ['index.ts']
 ```
+
+## Using `cmds`
+
+For easier managment of sub-commands, use `cmds`.
+
+Create a `cmdsapp.js` file:
+
+```js
+import { parse, Value, cmds } from 'otps'
+
+const [params, args] = parse(process.argv.slice(2), {
+  build: {
+    format: Value(),
+    production: {
+      version: Value(),
+    },
+  },
+})
+
+cmds(params, args)({
+  build(params, args) {
+    const format = params.format
+    cmds(params, args)({
+      production(params, args) {
+        const version = params.version
+        console.log(`production build: ${format}, name: app@${version}`)
+        console.log(args)
+      }
+    }, (params, args) => {
+      console.log(`development build: ${format}, name: app@dev`, args)
+      console.log(args)
+    })
+  }
+})
+```
+
+Then run the program:
+
+```sh
+node cmdsapp.js build --format esm production --version 1.0 src/index.ts
+# => production build: esm, name: app@1.0
+#    ['src/index.ts']
+
+node cmdsapp.js build --format esm src/index.ts
+# => production build: esm, name: app@dev
+#    ['src/index.ts']
+```
+
 
 ## Parameters
 

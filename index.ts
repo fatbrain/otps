@@ -2,24 +2,64 @@ const error = (msg: string) => {
   throw new Error(msg)
 }
 type ID = string | number | symbol
-type Token = [ID, string]
-type Input = Token[]
+type Token = readonly [ID, string]
+type Input = readonly Token[]
 
-type Fn<TState> = (input: Input, state?: TState) => [Input, TState]
+type Fn<TState> = (input: Input, state?: TState) => readonly [Input, TState]
 type ParamFn<TValue, TArgs extends any[]> = (...args: TArgs) => Fn<TValue>
 
-type ParseFn = (...match: string[]) => Token[]
-type Parse = Array<[RegExp, [ID, ...ID[]]] | [RegExp, ParseFn]>
+type ParseFn = (...match: readonly string[]) => readonly Token[]
+type Parse = ReadonlyArray<
+  readonly [RegExp, [ID, ...ID[]]] | readonly [RegExp, ParseFn]
+>
 
-const apply = (r: ParseFn | ID[], parts: string[]): Token[] =>
+type ValueOf<TFn> = TFn extends Fn<infer TValue> ? TValue : never
+
+export type Params<TConfig> = {
+  [P in keyof TConfig as TConfig[P] extends string
+    ? never
+    : P]?: TConfig[P] extends Fn<any>
+    ? ValueOf<TConfig[P]>
+    : TConfig[P] extends Config
+    ? Params<TConfig[P]>
+    : never
+}
+
+type Config = Record<string, any>
+
+type Cmds<TParams> = {
+  [K in keyof TParams as Config extends TParams[K] ? K : never]-?: (
+    params: Required<TParams>[K],
+    args: string[],
+  ) => void | Promise<void>
+}
+
+export const cmds =
+  <TParams extends Config>(params: TParams, args: string[]) =>
+  (
+    cmds: Cmds<TParams>,
+    noMatch?: (params: TParams, args: string[]) => void,
+  ) => {
+    for (const [key, value] of Object.entries(params)) {
+      if (key in cmds) {
+        return cmds[key as keyof Cmds<TParams>]?.(value, args)
+      }
+    }
+    noMatch?.(params, args)
+  }
+
+const apply = (
+  r: ParseFn | readonly ID[],
+  parts: readonly string[],
+): readonly Token[] =>
   typeof r === 'function' ? r(...parts) : parts.map((p, i) => [r[i], p])
 
-function* argv(
-  argv: string[],
+function* args(
+  argv: readonly string[],
   parser: Parse,
-): Generator<[ID, string], void, void> {
+): Generator<readonly [ID, string], void, void> {
   for (const arg of argv) {
-    const [re, r] = parser.find(([p]) => p.test(arg)) || [null, []]
+    const [re, r] = parser.find(([re]) => re.test(arg)) || [null, []]
     if (re) {
       for (const t of apply(r, arg.match(re)!.slice(1)).filter(([, v]) => v)) {
         yield t
@@ -112,26 +152,18 @@ export const Many =
     return [rest, [...state, value]] as [Input, TValue[]]
   }
 
-type ValueOf<TFn> = TFn extends Fn<infer TValue> ? TValue : never
+type Parser = <TConfig extends Config>(
+  argv: readonly string[],
+  config?: TConfig,
+) => readonly [Params<TConfig>, string[]]
 
-type ToParams<TConfig> = {
-  [P in keyof TConfig as TConfig[P] extends string
-    ? never
-    : P]?: TConfig[P] extends Fn<any>
-    ? ValueOf<TConfig[P]>
-    : TConfig[P] extends Config
-    ? ToParams<TConfig[P]>
-    : never
-}
-
-type Config = Record<string, any>
 const parser =
-  (parse: Parse, toParam: (type: ID, name: string) => string) =>
+  (parse: Parse, toParam: (type: ID, name: string) => string): Parser =>
   <TConfig extends Config>(
-    args: string[],
+    argv: readonly string[],
     config?: TConfig,
-  ): [ToParams<TConfig>, string[]] => {
-    let input = [...argv(args, parse)]
+  ): readonly [Params<TConfig>, string[]] => {
+    let input = [...args(argv, parse)]
     const varg: string[] = []
     const params: Config = {}
     let c: Config = config || {}
